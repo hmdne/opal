@@ -13,6 +13,7 @@ require 'opal/rewriters/dump_args'
 require 'opal/rewriters/mlhs_args'
 require 'opal/rewriters/inline_args'
 require 'opal/rewriters/numblocks'
+require 'opal/rewriters/forward_args'
 
 module Opal
   class Rewriter
@@ -44,6 +45,7 @@ module Opal
     use Rewriters::OpalEngineCheck
     use Rewriters::ForRewriter
     use Rewriters::Numblocks
+    use Rewriters::ForwardArgs
     use Rewriters::BlockToIter
     use Rewriters::DotJsSyntax
     use Rewriters::JsReservedWords

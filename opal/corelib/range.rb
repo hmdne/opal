@@ -9,7 +9,7 @@ class Range
 
   def initialize(first, last, exclude = false)
     raise NameError, "'initialize' called twice" if @begin
-    raise ArgumentError, 'bad value for range' unless first <=> last
+    raise ArgumentError, 'bad value for range' unless first <=> last || first.nil? || last.nil?
 
     @begin = first
     @end   = last
@@ -18,6 +18,26 @@ class Range
 
   def ===(value)
     include? value
+  end
+
+  %x{
+    function infinite(self) {
+      if (self.begin === nil || self.end === nil ||
+          self.begin === -Infinity || self.end === Infinity) return true;
+      return false;
+    }
+  }
+
+  def count(&block)
+    if !block_given? && `infinite(self)`
+      return Float::INFINITY
+    end
+    super
+  end
+
+  def to_a
+    raise TypeError, 'cannot convert endless range to an array' if `infinite(self)`
+    super
   end
 
   def cover?(value)
@@ -132,14 +152,13 @@ class Range
   def size
     infinity = Float::INFINITY
 
+    return infinity if `infinite(self)`
+    return nil unless Numeric === @begin && Numeric === @end
+
     range_begin = @begin
-    range_begin = -infinity if range_begin.nil?
     range_end   = @end
-    range_end   = infinity if range_end.nil?
     range_end  -= 1 if @excl
 
-    return nil unless Numeric === range_begin && Numeric === range_end
-    return infinity if [-range_begin, range_end].include?(infinity)
     return 0 if range_end < range_begin
 
     `Math.abs(range_end - range_begin) + 1`.to_i
@@ -234,6 +253,10 @@ class Range
   def bsearch(&block)
     return enum_for(:bsearch) unless block_given?
 
+    if `infinite(self) && (self.begin.$$is_number || self.end.$$is_number)`
+      raise NotImplementedError, "Can't #bsearch an infinite range"
+    end
+
     unless `self.begin.$$is_number && self.end.$$is_number`
       raise TypeError, "can't do binary search for #{@begin.class}"
     end
@@ -242,11 +265,11 @@ class Range
   end
 
   def to_s
-    "#{@begin}#{@excl ? '...' : '..'}#{@end.nil? ? '' : @end}"
+    "#{@begin.nil? ? '' : @begin}#{@excl ? '...' : '..'}#{@end.nil? ? '' : @end}"
   end
 
   def inspect
-    "#{@begin.inspect}#{@excl ? '...' : '..'}#{@end.nil? ? '' : @end.inspect}"
+    "#{@begin.nil? ? '' : @begin.inspect}#{@excl ? '...' : '..'}#{@end.nil? ? '' : @end.inspect}"
   end
 
   def marshal_load(args)
